@@ -32,6 +32,12 @@ router.put("/user", async (req, res) => {
     res.status(201).json({ message: "Usuário atualizado com sucesso" });
 });
 
+router.delete("/user", async (req, res) => {
+    await db
+    .delete(usersTable)
+    .where(eq(usersTable.age, 30))
 
+    res.status(201).json({ message: "Usuário deletado com sucesso" });
+});
 
 export default router;
