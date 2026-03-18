@@ -34,10 +34,15 @@ router.put("/user", async (req, res) => {
 
 router.delete("/user", async (req, res) => {
     await db
-    .delete(usersTable)
-    .where(eq(usersTable.age, 30))
+        .delete(usersTable)
+        .where(eq(usersTable.age, 30));
 
     res.status(201).json({ message: "Usuário deletado com sucesso" });
 });
 
+router.get("/users", async (req, res) => {
+    const users = await db.select().from(usersTable);
+
+    res.json(users);
+});
 export default router;
