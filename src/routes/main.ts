@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { usersTable } from "../db/schema";
 import { db } from "../libs/drizzle";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -11,9 +11,9 @@ router.get("/ping", (req, res) => {
 
 router.post("/user",  async (req, res) => {
     const newUser: typeof usersTable.$inferInsert = {
-        name: "Teste da Silva",
-        age: 25,
-        email: "teste@teste.com",
+        name: "Teste 3 da Silva",
+        age: 12,
+        email: "teste@teste3.com",
         obs: "Observação do usuário"
     }
 
@@ -41,7 +41,14 @@ router.delete("/user", async (req, res) => {
 });
 
 router.get("/users", async (req, res) => {
-    const users = await db.select().from(usersTable);
+    const users = await db
+    .select({
+        name: sql<string>`lower(${usersTable.name})`,
+        age: usersTable.age,
+        email: usersTable.email,
+        codigo: usersTable.id
+        })
+    .from(usersTable);
 
     res.json(users);
 });
