@@ -1,13 +1,47 @@
 import { Router } from "express";
 import { usersTable } from "../db/schema";
+import { petsTable } from "../db/schema";
 import { db } from "../libs/drizzle";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, } from "drizzle-orm";
+import { error } from "console";
 
 const router = Router();
 //ping route
 router.get("/ping", (req, res) => {
     res.json({ pong: true });
 });
+
+//function to transfer balance between users
+const transfer = async (val: number, userFrom: number, userTo: number) => {
+    //Iniciando a transação
+    await db.transaction(async (tx) => {
+        //Selecionando o saldo do usuário que irá transferir
+        const [accountFrom] = await tx
+        .select({ balance: usersTable.balance })
+        .from(usersTable)
+        .where(eq(usersTable.id, userFrom));
+        //Verificando se o usuário tem saldo suficiente para realizar a transferência
+        if(accountFrom.balance && accountFrom.balance < val) {
+            tx.rollback();
+            throw new Error("Saldo insuficiente");
+        };
+        //Atualizando o saldo do usuário que irá fazer a transferência
+        await tx.update(usersTable)
+        .set({balance: sql`${usersTable.balance} - ${val}`})
+        .where(eq(usersTable.id, userFrom));
+        //Atualizando o saldo do usuário que irá receber a transferência
+        await tx.update(usersTable)
+        .set({balance: sql`${usersTable.balance} + ${val}`})
+        .where(eq(usersTable.id, userTo));
+    });
+}
+//deposit route
+router.post("/deposit", async (req, res) => {
+    await transfer(100, 2, 5);
+
+    res.json({ error: null});
+});
+
 //create user
 router.post("/user",  async (req, res) => {
     const newUser: typeof usersTable.$inferInsert = {
@@ -46,15 +80,13 @@ router.get("/users", async (req, res) => {
 
     const users = await db
     .select({
-        name: sql<string>`lower(${usersTable.name})`,
-        age: usersTable.age,
-        email: usersTable.email,
-        codigo: usersTable.id
-        })
+        id: usersTable.id,
+        name: usersTable.name,
+        petName: petsTable.name,
+        petId: petsTable.id
+    })
     .from(usersTable)
-    .orderBy(desc(usersTable.name), desc(usersTable.id))
-    .limit(2)
-    .offset(1);
+    .rightJoin(petsTable, eq(petsTable.ownerId, usersTable.id))
 
     res.json(users);
 });
